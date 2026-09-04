@@ -1,93 +1,199 @@
 import { useMemo, useState } from 'react'
-import { CalendarDays, CarFront, Check, Clock3, MessageCircle, Shirt, Sparkles } from 'lucide-react'
-import { buildWhatsAppMessage, buildWhatsAppUrl, getDays, services, times, type DayId, type ServiceId, type TimeId } from './booking'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Check,
+  Clock3,
+  MapPin,
+  MessageCircle,
+} from 'lucide-react'
+import {
+  buildWhatsAppMessage,
+  buildWhatsAppUrl,
+  detailOptions,
+  formatPrice,
+  getBookingDays,
+  getQuote,
+  services,
+  times,
+  variants,
+  type ServiceId,
+  type TimeId,
+} from './booking'
 
-const serviceIcons = { laundry: Shirt, cleaning: Sparkles, car: CarFront }
+const stepLabels = ['الخدمة', 'التفاصيل', 'الموعد', 'التأكيد']
 
 export default function App() {
   const requestedService = new URLSearchParams(window.location.search).get('service') as ServiceId | null
   const initialService = services.some((item) => item.id === requestedService) ? requestedService : null
+  const [step, setStep] = useState(initialService ? 1 : 0)
   const [service, setService] = useState<ServiceId | null>(initialService)
-  const [day, setDay] = useState<DayId | null>(null)
-  const [time, setTime] = useState<TimeId | null>(null)
+  const [option, setOption] = useState('')
+  const [variant, setVariant] = useState('')
+  const [day, setDay] = useState('')
+  const [time, setTime] = useState<TimeId | ''>('')
+  const [area, setArea] = useState('')
   const [showErrors, setShowErrors] = useState(false)
-  const days = useMemo(() => getDays(), [])
-  const complete = Boolean(service && day && time)
+  const days = useMemo(() => getBookingDays(), [])
+  const quote = service && option ? getQuote(service, option, variant || undefined, time || undefined) : null
 
-  function submit() {
-    if (!complete) {
+  const selectedDay = days.find((item) => item.id === day)
+  const selectedTime = times.find((item) => item.id === time)
+
+  function chooseService(nextService: ServiceId) {
+    setService(nextService)
+    setOption('')
+    setVariant('')
+  }
+
+  function continueFlow() {
+    const valid = step === 0
+      ? Boolean(service)
+      : step === 1
+        ? Boolean(quote)
+        : Boolean(day && time && area.trim())
+    if (!valid) {
       setShowErrors(true)
       window.setTimeout(() => document.querySelector<HTMLElement>('[data-missing="true"]')?.focus(), 0)
       return
     }
-    const selectedService = services.find((item) => item.id === service)!
-    const selectedDay = days.find((item) => item.id === day)!
-    const selectedTime = times.find((item) => item.id === time)!
-    const message = buildWhatsAppMessage(selectedService.label, selectedDay.label, selectedDay.date, selectedTime.label)
+    setShowErrors(false)
+    setStep((current) => Math.min(3, current + 1))
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  function submit() {
+    if (!quote || !selectedDay || !selectedTime || !area.trim()) return
+    const message = buildWhatsAppMessage({ quote, day: selectedDay.full, time: selectedTime.label, area: area.trim() })
     window.location.href = buildWhatsAppUrl(message)
   }
+
+  const serviceOptions = service ? detailOptions[service] : []
+  const serviceVariants = service === 'laundry' ? variants.laundry : service === 'car' ? variants.car : []
 
   return (
     <main className="page-shell">
       <section className="booking-card" aria-labelledby="page-title">
         <header className="brand-header">
           <img src={`${import.meta.env.BASE_URL}homi-logo.jpeg`} alt="هومي Homi" width="391" height="183" />
-          <span>عمّان</span>
+          <span><MapPin aria-hidden="true" size={14} /> عمّان</span>
         </header>
 
-        <div className="intro">
-          <p className="eyebrow">حجز سريع على واتساب</p>
-          <h1 id="page-title">شو الخدمة اللي بدك ياها؟</h1>
-          <p>اختار الخدمة والوقت المناسب إلك، وبنكمّل معك على واتساب.</p>
+        <div className="progress" aria-label={`الخطوة ${step + 1} من 4`}>
+          <div className="progress-copy"><strong>{stepLabels[step]}</strong><span>{step + 1} / 4</span></div>
+          <div className="progress-track"><i style={{ width: `${((step + 1) / 4) * 100}%` }} /></div>
         </div>
 
-        <section className="step" aria-labelledby="service-title">
-          <div className="step-title"><span>١</span><h2 id="service-title">اختار الخدمة</h2></div>
-          <div className="service-grid" role="radiogroup" aria-labelledby="service-title">
+        {step === 0 && <section className="flow-step" aria-labelledby="page-title">
+          <div className="intro">
+            <p className="eyebrow">احجز خدمتك بسهولة</p>
+            <h1 id="page-title">شو بدك نساعدك فيه؟</h1>
+            <p>اختار الخدمة، وشوف السعر قبل ما تبعت طلبك.</p>
+          </div>
+          <div className="service-grid" role="radiogroup" aria-label="الخدمة">
             {services.map((item) => {
-              const Icon = serviceIcons[item.id]
               const selected = service === item.id
-              return <button key={item.id} type="button" role="radio" aria-checked={selected} className={`choice service-choice ${selected ? 'selected' : ''}`} onClick={() => setService(item.id)} data-missing={showErrors && !service || undefined}>
-                <span className="icon-box"><Icon aria-hidden="true" size={24} strokeWidth={2} /></span>
-                <span className="choice-copy"><strong>{item.label}</strong><small>{item.detail}</small></span>
-                <span className="check"><Check aria-hidden="true" size={17} strokeWidth={3} /></span>
+              return <button key={item.id} type="button" role="radio" aria-checked={selected} className={`choice service-choice ${selected ? 'selected' : ''}`} onClick={() => chooseService(item.id)} data-missing={showErrors && !service || undefined}>
+                <span className="icon-box"><img src={`${import.meta.env.BASE_URL}${item.image}`} alt="" /></span>
+                <span className="choice-copy"><strong>{item.label}</strong><small>{item.description}</small><b>ابتداءً من {formatPrice(item.from)}</b></span>
+                <span className="select-mark"><Check aria-hidden="true" size={16} strokeWidth={3} /></span>
               </button>
             })}
           </div>
-          {showErrors && !service && <p className="error" role="alert">اختار الخدمة عشان نكمّل</p>}
-        </section>
+          {showErrors && !service && <p className="error" role="alert">اختار خدمة عشان نكمّل</p>}
+        </section>}
 
-        <section className="step" aria-labelledby="day-title">
-          <div className="step-title"><span>٢</span><CalendarDays aria-hidden="true" size={20}/><h2 id="day-title">أي يوم بناسبك؟</h2></div>
-          <div className="option-grid" role="radiogroup" aria-labelledby="day-title">
-            {days.map((item) => <button key={item.id} type="button" role="radio" aria-checked={day === item.id} className={`choice compact ${day === item.id ? 'selected' : ''}`} onClick={() => setDay(item.id)} data-missing={showErrors && Boolean(service) && !day || undefined}>
-              <strong>{item.label}</strong><small>{item.date}</small><span className="check"><Check aria-hidden="true" size={16} strokeWidth={3}/></span>
-            </button>)}
+        {step === 1 && service && <section className="flow-step" aria-labelledby="details-title">
+          <div className="intro compact-intro">
+            <p className="eyebrow">{services.find((item) => item.id === service)?.label}</p>
+            <h1 id="details-title">اختار تفاصيل الخدمة</h1>
+            <p>السعر بتحدّث مباشرة حسب اختيارك.</p>
           </div>
-          {showErrors && !day && <p className="error" role="alert">اختار اليوم المفضّل</p>}
-        </section>
-
-        <section className="step" aria-labelledby="time-title">
-          <div className="step-title"><span>٣</span><Clock3 aria-hidden="true" size={20}/><h2 id="time-title">أي وقت بناسبك؟</h2></div>
-          <div className="option-grid" role="radiogroup" aria-labelledby="time-title">
-            {times.map((item) => <button key={item.id} type="button" role="radio" aria-checked={time === item.id} className={`choice compact ${time === item.id ? 'selected' : ''}`} onClick={() => setTime(item.id)} data-missing={showErrors && Boolean(service && day) && !time || undefined}>
-              <strong>{item.label}</strong><small>{item.detail}</small><span className="check"><Check aria-hidden="true" size={16} strokeWidth={3}/></span>
-            </button>)}
+          <div className="field-group">
+            <h2>نوع الخدمة</h2>
+            <div className="stacked-options" role="radiogroup" aria-label="نوع الخدمة">
+              {serviceOptions.map((item) => <button key={item.id} type="button" role="radio" aria-checked={option === item.id} className={`choice detail-choice ${option === item.id ? 'selected' : ''}`} onClick={() => { setOption(item.id); setVariant('') }} data-missing={showErrors && !option || undefined}>
+                <span><strong>{item.label}</strong><small>{item.detail}</small></span>
+                <span className="radio-dot" />
+              </button>)}
+            </div>
           </div>
-          {showErrors && !time && <p className="error" role="alert">اختار الوقت المفضّل</p>}
-        </section>
+          {serviceVariants.length > 0 && <div className="field-group">
+            <h2>{service === 'laundry' ? 'حجم الكيس' : 'حجم السيارة'}</h2>
+            <div className="variant-grid" role="radiogroup" aria-label={service === 'laundry' ? 'حجم الكيس' : 'حجم السيارة'}>
+              {serviceVariants.map((item) => {
+                const unavailable = service === 'car' && item.id === 'medium' && option !== 'vip'
+                return <button key={item.id} type="button" role="radio" aria-checked={variant === item.id} disabled={unavailable} className={`choice variant-choice ${variant === item.id ? 'selected' : ''}`} onClick={() => setVariant(item.id)} data-missing={showErrors && !variant || undefined}>
+                  <strong>{item.label}</strong><small>{unavailable ? 'متاح مع VIP' : item.detail}</small>
+                </button>
+              })}
+            </div>
+          </div>}
+          {showErrors && !quote && <p className="error" role="alert">كمّل اختيارات الخدمة عشان يظهر السعر</p>}
+          <div className={`price-panel ${quote ? 'ready' : ''}`} aria-live="polite">
+            <span>{quote ? 'سعر خدمتك' : 'السعر بظهر هون'}</span>
+            <strong>{quote ? formatPrice(quote.price) : '—'}</strong>
+            <small>{quote ? 'يشمل الباقة والحجم اللي اخترتهم' : 'كمّل الاختيارات ليظهر السعر النهائي'}</small>
+          </div>
+        </section>}
 
-        <div className="honesty-note">
-          <Check aria-hidden="true" size={20}/>
-          <p><strong>هالطلب مبدئي.</strong> بنأكدلك الموعد والسعر النهائي على واتساب حسب تفاصيل الخدمة.</p>
-        </div>
+        {step === 2 && <section className="flow-step" aria-labelledby="schedule-title">
+          <div className="intro compact-intro">
+            <p className="eyebrow">الموعد والمكان</p>
+            <h1 id="schedule-title">متى ووين بناسبك؟</h1>
+            <p>اختيارك طلب مفضّل، وبنأكد التوفر معك على واتساب.</p>
+          </div>
+          <div className="field-group">
+            <h2><CalendarDays aria-hidden="true" size={19} /> اليوم المفضّل</h2>
+            <div className="day-scroller" role="radiogroup" aria-label="اليوم المفضّل">
+              {days.map((item) => <button key={item.id} type="button" role="radio" aria-checked={day === item.id} className={`choice day-choice ${day === item.id ? 'selected' : ''}`} onClick={() => setDay(item.id)} data-missing={showErrors && !day || undefined}>
+                <small>{item.weekday}</small><strong>{item.day}</strong><small>{item.month}</small>
+              </button>)}
+            </div>
+          </div>
+          <div className="field-group">
+            <h2><Clock3 aria-hidden="true" size={19} /> الوقت المفضّل</h2>
+            <div className="variant-grid" role="radiogroup" aria-label="الوقت المفضّل">
+              {times.map((item) => <button key={item.id} type="button" role="radio" aria-checked={time === item.id} className={`choice variant-choice ${time === item.id ? 'selected' : ''}`} onClick={() => setTime(item.id)} data-missing={showErrors && !time || undefined}>
+                <strong>{item.label}</strong><small>{item.detail}</small>
+              </button>)}
+            </div>
+          </div>
+          <label className="area-field">
+            <span><MapPin aria-hidden="true" size={19} /> منطقتك بعمّان</span>
+            <input value={area} onChange={(event) => setArea(event.target.value)} placeholder="مثلاً: خلدا" autoComplete="address-level2" data-missing={showErrors && !area.trim() || undefined} />
+            <small>بعد ما تفتح واتساب، ابعتلنا اللوكيشن الدقيق 📍</small>
+          </label>
+          {showErrors && (!day || !time || !area.trim()) && <p className="error" role="alert">اختار اليوم والوقت، واكتب منطقتك</p>}
+        </section>}
 
-        <button type="button" className="whatsapp-button" onClick={submit} aria-describedby="booking-helper">
-          <MessageCircle aria-hidden="true" size={24} fill="currentColor" />
-          <span>كمّل الحجز على واتساب</span>
-        </button>
-        <p id="booking-helper" className="helper">رح يفتح واتساب برسالة جاهزة — بس ابعتلنا اللوكيشن 📍</p>
-        <a className="instagram" href="https://www.instagram.com/homi.jordan/" target="_blank" rel="noreferrer">@homi.jordan</a>
+        {step === 3 && quote && selectedDay && selectedTime && <section className="flow-step" aria-labelledby="review-title">
+          <div className="intro compact-intro">
+            <p className="eyebrow">راجع طلبك</p>
+            <h1 id="review-title">كل التفاصيل جاهزة</h1>
+            <p>راجعها، وبعدها ابعت الطلب لهومي على واتساب.</p>
+          </div>
+          <div className="review-card">
+            <div><span>الخدمة</span><strong>{quote.serviceLabel}</strong></div>
+            <div><span>التفاصيل</span><strong>{quote.optionLabel}{quote.variantLabel ? ` — ${quote.variantLabel}` : ''}</strong></div>
+            <div><span>الموعد المفضّل</span><strong>{selectedDay.full}، {selectedTime.label}</strong></div>
+            <div><span>المنطقة</span><strong>{area.trim()}</strong></div>
+            <div className="review-price"><span>السعر</span><strong>{formatPrice(quote.price)}</strong></div>
+          </div>
+          <div className="honesty-note"><Check aria-hidden="true" size={19} /><p><strong>ما خصمنا منك إشي.</strong> هاد طلب حجز، وبنأكدلك التوفر على واتساب قبل تثبيت الموعد.</p></div>
+          <button type="button" className="whatsapp-button" onClick={submit}>
+            <MessageCircle aria-hidden="true" size={23} fill="currentColor" />
+            <span>ابعت طلب الحجز</span>
+          </button>
+          <p className="helper">رح يفتح واتساب برسالة فيها كل اختياراتك</p>
+        </section>}
+
+        <footer className="flow-footer">
+          {step > 0 && <button type="button" className="back-button" onClick={() => { setStep((current) => current - 1); setShowErrors(false) }}><ArrowRight aria-hidden="true" size={19} /> رجوع</button>}
+          {step < 3 && <button type="button" className="continue-button" onClick={continueFlow}>كمّل <ArrowLeft aria-hidden="true" size={20} /></button>}
+
+        </footer>
       </section>
     </main>
   )
