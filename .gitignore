@@ -1,3 +1,9 @@
 .DS_Store
 node_modules/
+dist/
 qa/
+test-results/
+playwright-report/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts

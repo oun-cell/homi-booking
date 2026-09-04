@@ -1,11 +1,22 @@
 # Homi Quick Booking
 
-Arabic-first, mobile-first preference picker for Homi customers in Amman. It collects a service, preferred day, and preferred time, then opens Homi WhatsApp with a structured request. The interface does not claim live availability or a confirmed price.
+Arabic-first mobile booking link for Homi in Amman. A customer chooses a service, preferred day, and preferred time, then continues to Homi WhatsApp with a ready-to-send structured request.
 
-## Commands
+The selected slot is explicitly a preference. Homi confirms availability, scope, and final price in WhatsApp before the booking is fixed.
 
-- `npm test` — unit/component tests
-- `npm run build` — production build
-- `npm run test:smoke` — Playwright browser smoke tests
+## Local verification
 
-Production: https://oun-cell.github.io/homi-booking/
+```bash
+npm ci
+npm test
+npm run build
+npm run test:smoke
+```
+
+## Campaign links
+
+Preselect a service to reduce the path by one tap:
+
+- `/homi-booking/?service=laundry`
+- `/homi-booking/?service=cleaning`
+- `/homi-booking/?service=car`
