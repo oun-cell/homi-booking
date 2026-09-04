@@ -17,7 +17,7 @@ test('completes a priced laundry booking and creates the exact WhatsApp handoff'
   await page.route('https://wa.me/**', (route) => route.abort())
   const [request] = await Promise.all([
     page.waitForRequest(/wa\.me\/962770980084/),
-    page.getByRole('button', { name: /ابعت طلب الحجز/ }).click(),
+    page.getByRole('button', { name: /ابعت الطلب على واتساب/ }).click(),
   ])
   const decoded = decodeURIComponent(request.url())
   expect(decoded).toContain('غسيل وكوي — صغير — ١٠ قطع')

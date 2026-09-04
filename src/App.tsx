@@ -181,12 +181,12 @@ export default function App() {
             <div><span>المنطقة</span><strong>{area.trim()}</strong></div>
             <div className="review-price"><span>السعر</span><strong>{formatPrice(quote.price)}</strong></div>
           </div>
-          <div className="honesty-note"><Check aria-hidden="true" size={19} /><p><strong>ما خصمنا منك إشي.</strong> هاد طلب حجز، وبنأكدلك التوفر على واتساب قبل تثبيت الموعد.</p></div>
+          <div className="honesty-note"><Check aria-hidden="true" size={19} /><p><strong>لسا ما ثبتنا الموعد.</strong> بنأكدلك التوفر على واتساب أول، وبعدها بنثبت الحجز.</p></div>
           <button type="button" className="whatsapp-button" onClick={submit}>
             <MessageCircle aria-hidden="true" size={23} fill="currentColor" />
-            <span>ابعت طلب الحجز</span>
+            <span>ابعت الطلب على واتساب</span>
           </button>
-          <p className="helper">رح يفتح واتساب برسالة فيها كل اختياراتك</p>
+          <p className="helper">بتفتحلك رسالة جاهزة فيها كل التفاصيل</p>
         </section>}
 
         <footer className="flow-footer">
