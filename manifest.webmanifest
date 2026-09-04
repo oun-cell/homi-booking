@@ -1,0 +1,12 @@
+{
+  "name": "Homi Booking",
+  "short_name": "Homi",
+  "description": "احجز خدمة البيت من هومي بخطوات بسيطة على واتساب.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#ffffff"
+}
